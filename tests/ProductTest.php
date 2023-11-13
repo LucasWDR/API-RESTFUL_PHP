@@ -6,41 +6,37 @@ use Slim\Http\Environment;
 use Slim\Http\Request;
 use Slim\Http\Response;
 
+use Slim\Testing\TestCase as SlimTestCase;
 
-class MyTest extends TestCase
+require __DIR__ . '/../vendor/autoload.php'; // Ajuste o caminho conforme a sua estrutura
+
+class ProductTest extends TestCase
 {
-    protected $app;
+    private $app;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
-        // Crie uma instância do aplicativo Slim
         $this->app = new App();
 
-        // Defina a configuração de teste, por exemplo, mode 'testing'
-        $this->app->getContainer()['settings']['displayErrorDetails'] = true;
-        $this->app->getContainer()['settings']['mode'] = 'testing';
-
-        // Defina suas rotas
-        $this->app->get('/hello/{name}', function ($request, $response, $args) {
-            return $response->write("Hello, " . $args['name']);
+        // Configure suas rotas ou carregue as configurações do seu aplicativo aqui
+        $this->app->get('/products/{id}', function (Request $request, Response $response, $args) {
+            $productId = $args['id'];
+            // Faça algo com $productId e retorne uma resposta
+            return $response->withJson(['id' => $productId]);
         });
     }
 
-    public function testHelloRoute()
+    public function testGetProductById()
     {
-        // Crie um ambiente de teste
-        $environment = Environment::mock([
-            'REQUEST_URI' => '/hello/John',
-            'REQUEST_METHOD' => 'GET',
-        ]);
+        $request = $this->createRequest('GET', '/products/1');
+        $response = $this->app->handle($request);
 
-        $request = Request::createFromEnvironment($environment);
-        $response = new Response();
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(['id' => '123'], json_decode((string) $response->getBody(), true));
+    }
 
-        // Execute a aplicação Slim
-        $response = $this->app->process($request, $response);
-
-        // Asserção: verifique se a resposta contém a string esperada
-        $this->assertSame("Hello, John", (string) $response->getBody());
+    private function createRequest(string $method, string $uri): Request
+    {
+        return Request::createFromString($method, $uri);
     }
 }

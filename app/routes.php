@@ -15,7 +15,7 @@ return function (App $app) {
   });
 
 
-  // para testar a rota padrao
+  // para testar a rota Padrao
   $app->get('/', function (Request $request, Response $response) {
     $response->getBody()->write('Hello world! php test');
     return $response;
@@ -30,6 +30,7 @@ return function (App $app) {
 
     $deslocamento = ($pagina - 1) * $porPagina;
 
+    // vereficar sql por pagina
     $sql = "SELECT * FROM products LIMIT :deslocamento, :porPagina";
 
     try {
@@ -59,10 +60,12 @@ return function (App $app) {
         'registros_por_pagina' => $porPagina,
         'registros' => $productsAll
       ];
+      
       $response->getBody()->write(json_encode($paginatedProducts));
       return $response
         ->withHeader('content-type', 'application/json')
         ->withStatus(200);
+  
     } catch (PDOException $e) {
       $error = array(
         "message" => $e->getMessage()
