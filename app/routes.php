@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Application\Actions\User\ListUsersAction;
-use App\Application\Actions\User\ViewUserAction;
+
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
-use Slim\Interfaces\RouteCollectorProxyInterface as Group;
 use App\Models\DB;
 
 return function (App $app) {
@@ -16,6 +14,8 @@ return function (App $app) {
     return $response;
   });
 
+
+  // para testar a rota padrao
   $app->get('/', function (Request $request, Response $response) {
     $response->getBody()->write('Hello world! php test');
     return $response;
