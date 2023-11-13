@@ -169,4 +169,33 @@ return function (App $app) {
       }
     }
   );
+
+  $app->delete('/products/{id}', function (Request $request, Response $response, array $args) {
+    $id = $args["id"];
+
+    $sql = "DELETE FROM products WHERE id = $id";
+
+    try {
+      $db = new Db();
+      $conn = $db->connect();
+
+      $stmt = $conn->prepare($sql);
+      $result = $stmt->execute();
+
+      $db = null;
+      $response->getBody()->write(json_encode($result));
+      return $response
+        ->withHeader('content-type', 'application/json')
+        ->withStatus(200);
+    } catch (PDOException $e) {
+      $error = array(
+        "message" => $e->getMessage()
+      );
+
+      $response->getBody()->write(json_encode($error));
+      return $response
+        ->withHeader('content-type', 'application/json')
+        ->withStatus(500);
+    }
+  });
 };
