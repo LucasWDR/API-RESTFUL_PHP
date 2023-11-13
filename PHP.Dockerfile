@@ -41,7 +41,7 @@ RUN pecl install xdebug && docker-php-ext-enable xdebug
 
 RUN pecl install imagick-3.7.0 && docker-php-ext-enable imagick
 
-RUN adduser abhinav
-USER abhinav
+RUN adduser desktop-2hkmstv\lucas witt da rosa
+USER desktop-2hkmstv\lucas witt da rosa
 
 CMD ["php-fpm"]
