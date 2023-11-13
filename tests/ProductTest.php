@@ -3,8 +3,15 @@
 use PHPUnit\Framework\TestCase;
 use Slim\App;
 use Slim\Http\Environment;
-use Slim\Http\Request;
-use Slim\Http\Response;
+use Psr\Http\Message\ResponseInterface as Response;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use App\Models\DB;
+
+use App\Application\Actions\ActionError;
+use App\Application\Actions\ActionPayload;
+use App\Application\Handlers\HttpErrorHandler;
+use DI\Container;
+use Slim\Middleware\ErrorMiddleware;
 
 use Slim\Testing\TestCase as SlimTestCase;
 
@@ -22,7 +29,7 @@ class ProductTest extends TestCase
         $this->app->get('/products/{id}', function (Request $request, Response $response, $args) {
             $productId = $args['id'];
             // Faça algo com $productId e retorne uma resposta
-            return $response->withJson(['id' => $productId]);
+            $response->getBody()->write(json_encode(['id' => $productId]));
         });
     }
 
@@ -32,11 +39,32 @@ class ProductTest extends TestCase
         $response = $this->app->handle($request);
 
         $this->assertSame(200, $response->getStatusCode());
-        $this->assertSame(['id' => '123'], json_decode((string) $response->getBody(), true));
+        $this->assertSame(['id' => '1'], json_decode((string) $response->getBody(), true));
     }
 
-    private function createRequest(string $method, string $uri): Request
+    public function testProduct() 
     {
-        return Request::createFromString($method, $uri);
+
+        $sql =  "SELECT * FROM products";
+
+         $db = new Db();
+         $conn = $db->connect();
+
+      // com base na conexão feita vai preparar a instrução sqguida pelo '$sql'
+        $preparedStatement = $conn->prepare($sql);
+        $preparedStatement->execute();
+        $productsAll = $preparedStatement->fetchAll(PDO::FETCH_OBJ);
+
+        $expected = [
+            'pagina_atual' => 1,
+            'total_paginas' => 2,
+            'total_registros' => 7,
+            'registros_por_pagina' => 5,
+            'registros' => $productsAll
+        ];
+
+        $arrayCompared = array_merge($expected, $productsAll);
+
+        $this->assertEquals($expected, $arrayCompared);
     }
 }
