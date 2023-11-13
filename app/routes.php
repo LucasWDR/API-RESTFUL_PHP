@@ -22,16 +22,44 @@ return function (App $app) {
   });
 
   $app->get('/products/all', function (Request $request, Response $response) {
-    $sql = "SELECT * FROM products";
+    $queryParams = $request->getQueryParams();
+
+    // obter numero de paginas e quantidade de itens por pagina 
+    $pagina = isset($queryParams['pagina']) ? max(1, intval($queryParams['pagina'])) : 1;
+    $porPagina = isset($queryParams['porPagina']) ? max(1, intval($queryParams['porPagina'])) : 5;
+
+    $deslocamento = ($pagina - 1) * $porPagina;
+
+    $sql = "SELECT * FROM products LIMIT :deslocamento, :porPagina";
 
     try {
       $db = new Db();
       $conn = $db->connect();
-      $stmt = $conn->query($sql);
-      $products = $stmt->fetchAll(PDO::FETCH_OBJ);
-      $db = null;
 
-      $response->getBody()->write(json_encode($products));
+      // com base na conexão feita vai preparar a instrução sqguida pelo '$sql'
+      $preparedStatement = $conn->prepare($sql);
+
+      //bindParam usado para vincular um valor a varaivel
+      $preparedStatement->bindParam(':deslocamento', $deslocamento, PDO::PARAM_INT);
+      $preparedStatement->bindParam(':porPagina', $porPagina, PDO::PARAM_INT);
+      $preparedStatement->execute();
+      $productsAll = $preparedStatement->fetchAll(PDO::FETCH_OBJ);
+
+      // Obtém o total de registros
+      $totalRegistros = $conn->query("SELECT COUNT(*) FROM products")->fetchColumn();
+
+      // Calcula o total das paginas
+      $totalPaginas = ceil($totalRegistros / $porPagina);
+
+      // Montar o array de resposta
+      $paginatedProducts = [
+        'pagina_atual' => $pagina,
+        'total_paginas' => $totalPaginas,
+        'total_registros' => $totalRegistros,
+        'registros_por_pagina' => $porPagina,
+        'registros' => $productsAll
+      ];
+      $response->getBody()->write(json_encode($paginatedProducts));
       return $response
         ->withHeader('content-type', 'application/json')
         ->withStatus(200);
@@ -50,17 +78,20 @@ return function (App $app) {
   $app->get('/products/{id}', function (Request $request, Response $response, $args) {
     $productId = $args['id'];
 
+    // Realizando sql com base no id passado
     $sql = "SELECT * FROM products WHERE id = :id";
 
     try {
       $db = new Db();
       $conn = $db->connect();
-      $stmt = $conn->prepare($sql);
-      $stmt->bindParam(':id', $productId, PDO::PARAM_INT);
-      $stmt->execute();
 
-      $product = $stmt->fetch(PDO::FETCH_OBJ);
+      $preparedStatement = $conn->prepare($sql);
+      $preparedStatement->bindParam(':id', $productId, PDO::PARAM_INT);
+      $preparedStatement->execute();
 
+      $product = $preparedStatement->fetch(PDO::FETCH_OBJ);
+
+      // condição para produto não encontrado
       if (!$product) {
         $response->getBody()->write(json_encode(['error' => 'Produto não encontrado na base']));
         return $response
@@ -87,7 +118,9 @@ return function (App $app) {
   });
 
   $app->post('/products/add', function (Request $request, Response $response, array $args) {
+    // obter dados do body de solicitação 
     $data = $request->getParsedBody();
+
     $name = $data["name"];
     $description = $data["description"];
     $price = $data["price"];
@@ -99,13 +132,13 @@ return function (App $app) {
       $db = new Db();
       $conn = $db->connect();
 
-      $stmt = $conn->prepare($sql);
-      $stmt->bindParam(':name', $name);
-      $stmt->bindParam(':description', $description);
-      $stmt->bindParam(':price', $price);
-      $stmt->bindParam(':amount', $amount);
+      $preparedStatement = $conn->prepare($sql);
+      $preparedStatement->bindParam(':name', $name);
+      $preparedStatement->bindParam(':description', $description);
+      $preparedStatement->bindParam(':price', $price);
+      $preparedStatement->bindParam(':amount', $amount);
 
-      $result = $stmt->execute();
+      $result = $preparedStatement->execute();
 
       $db = null;
       $response->getBody()->write(json_encode($result));
@@ -124,9 +157,14 @@ return function (App $app) {
     }
   });
 
-  $app->put('/products/{id}', function (Request $request, Response $response, array $args) {
+  $app->put(
+    '/products/update/{id}',
+    function (Request $request, Response $response, array $args) {
       $id = $request->getAttribute('id');
+      
+      // obter dados do body de solicitação 
       $data = $request->getParsedBody();
+
       $name = $data["name"];
       $description = $data["description"];
       $price = $data["price"];
@@ -143,13 +181,13 @@ return function (App $app) {
         $db = new Db();
         $conn = $db->connect();
 
-        $stmt = $conn->prepare($sql);
-        $stmt->bindParam(':name', $name);
-        $stmt->bindParam(':description', $description);
-        $stmt->bindParam(':price', $price);
-        $stmt->bindParam(':amount', $amount);
+        $preparedStatement = $conn->prepare($sql);
+        $preparedStatement->bindParam(':name', $name);
+        $preparedStatement->bindParam(':description', $description);
+        $preparedStatement->bindParam(':price', $price);
+        $preparedStatement->bindParam(':amount', $amount);
 
-        $result = $stmt->execute();
+        $result = $preparedStatement->execute();
 
         $db = null;
         echo "Update successful! ";
@@ -170,17 +208,18 @@ return function (App $app) {
     }
   );
 
-  $app->delete('/products/{id}', function (Request $request, Response $response, array $args) {
+  $app->delete('/products/delete/{id}', function (Request $request, Response $response, array $args) {
     $id = $args["id"];
 
+    //sql para selecionar produto por id com base no parametro para delete
     $sql = "DELETE FROM products WHERE id = $id";
 
     try {
       $db = new Db();
       $conn = $db->connect();
 
-      $stmt = $conn->prepare($sql);
-      $result = $stmt->execute();
+      $preparedStatement = $conn->prepare($sql);
+      $result = $preparedStatement->execute();
 
       $db = null;
       $response->getBody()->write(json_encode($result));
